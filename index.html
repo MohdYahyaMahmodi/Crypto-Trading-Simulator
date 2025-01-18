@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en" x-data="tradingApp()" x-init="init()">
+<head>
+  <meta charset="UTF-8" />
+  <title>Crypto Trading Simulator</title>
+  <!-- Alpine.js (v3.x.x) CDN -->
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <style>
+    /* RESET / GLOBAL STYLES */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #000; /* black background */
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden; /* keep layout snug, avoid scrollbars if possible */
+    }
+
+    header {
+      text-align: center;
+      padding: 1rem;
+      font-size: 1.5rem;
+      font-weight: 600;
+      background-color: #111;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      letter-spacing: 1px;
+    }
+
+    main {
+      display: flex;
+      flex: 1;
+      width: 100%;
+    }
+
+    /* LEFT SECTION (Chart + Crypto Selector) */
+    .left-section {
+      flex: 0 0 75%;
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .crypto-selector {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .crypto-selector label {
+      font-size: 1rem;
+      color: #ccc;
+    }
+
+    select {
+      padding: 0.4rem 0.6rem;
+      font-size: 0.9rem;
+      background: #222;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Chart container */
+    .chart-container {
+      flex: 1;
+      margin-top: 1rem;
+      display: flex;
+      flex-direction: column;
+      height: 80%; /* chart is 80% height of left section */
+      border-radius: 8px;
+      background: #111;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* The canvas for candlesticks */
+    #candlestickChart {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* RIGHT SECTION (Portfolio / Trades) */
+    .right-section {
+      flex: 0 0 25%;
+      display: flex;
+      flex-direction: column;
+      background-color: #111;
+      padding: 1rem;
+      border-left: 1px solid #222;
+    }
+
+    /* Portfolio summary container */
+    .portfolio-summary {
+      background: #000;
+      border: 1px solid #222;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .portfolio-summary h2 {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+      color: #999;
+    }
+
+    .balance-number {
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .profit-loss {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .green-text {
+      color: #00c851;
+    }
+
+    .red-text {
+      color: #ff4444;
+    }
+
+    /* Holdings container */
+    .holdings {
+      background: #000;
+      border: 1px solid #222;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      flex: 0 0 auto;
+    }
+
+    .holdings h2 {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+      color: #999;
+    }
+
+    .holding-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      margin: 0.2rem 0;
+    }
+
+    /* Trade container */
+    .trade-section {
+      background: #000;
+      border: 1px solid #222;
+      border-radius: 6px;
+      padding: 1rem;
+      flex: 1; /* so it can grow */
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .trade-section h2 {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+      color: #999;
+    }
+
+    .trade-info {
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .trade-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .quick-trade-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    button {
+      outline: none;
+      border: none;
+      border-radius: 4px;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, opacity 0.2s;
+    }
+
+    .buy-button {
+      background: #00c851;
+      color: #fff;
+    }
+
+    .sell-button {
+      background: #ff4444;
+      color: #fff;
+    }
+
+    .sell-all-button {
+      background: #ffbb33; /* a different color for "sell all" */
+      color: #000;
+      margin-top: 0.5rem;
+    }
+
+    button:hover {
+      opacity: 0.85;
+    }
+
+    /* Custom input styling */
+    input[type="number"] {
+      width: 100%;
+      padding: 0.4rem;
+      border-radius: 4px;
+      border: 1px solid #333;
+      background: #222;
+      color: #fff;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    label {
+      font-size: 0.9rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .note {
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 0.3rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>Crypto Trading Simulator</header>
+
+<main>
+  <!-- LEFT SECTION -->
+  <div class="left-section">
+    <div class="top-bar">
+      <!-- Crypto Dropdown -->
+      <div class="crypto-selector">
+        <label for="crypto-select">Crypto:</label>
+        <select id="crypto-select" x-model="selectedCrypto" @change="switchCrypto()">
+          <template x-for="crypto in cryptos" :key="crypto.symbol">
+            <option :value="crypto.symbol" x-text="crypto.name"></option>
+          </template>
+        </select>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-container">
+      <canvas id="candlestickChart"></canvas>
+    </div>
+  </div>
+
+  <!-- RIGHT SECTION -->
+  <div class="right-section">
+    <!-- Portfolio Summary -->
+    <div class="portfolio-summary">
+      <h2>Portfolio</h2>
+      <div class="balance-number">
+        Total Value:
+        <span x-text="formatUSD(totalPortfolioValue)"></span>
+      </div>
+      <div class="profit-loss" x-show="totalPortfolioValue !== 100000">
+        <span x-text="profitLossText"
+          :class="{ 'green-text': totalPortfolioValue >= 100000, 'red-text': totalPortfolioValue < 100000 }">
+        </span>
+      </div>
+    </div>
+
+    <!-- Holdings -->
+    <div class="holdings">
+      <h2>Holdings</h2>
+      <template x-for="crypto in cryptos" :key="crypto.symbol">
+        <div class="holding-item">
+          <div><strong x-text="crypto.symbol"></strong></div>
+          <div><span x-text="holdings[crypto.symbol]?.toFixed(6) ?? '0.000000'"></span></div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Trade Section -->
+    <div class="trade-section">
+      <div>
+        <h2 x-text="selectedCrypto"></h2>
+        <div class="trade-info">
+          Current Price:
+          <strong x-text="formatUSD(currentPrice)"></strong>
+        </div>
+        <div class="trade-controls">
+          <!-- Quick Trade Row -->
+          <div class="quick-trade-buttons">
+            <button class="buy-button" @click="quickTrade(+1)">+1</button>
+            <button class="sell-button" @click="quickTrade(-1)">-1</button>
+          </div>
+
+          <label for="tradeAmount">Amount (<span x-text="selectedCrypto"></span>):</label>
+          <input type="number" step="any" x-model.number="tradeAmount" />
+
+          <div style="display:flex; gap:0.5rem;">
+            <button class="buy-button" @click="buyCrypto()">Buy</button>
+            <button class="sell-button" @click="sellCrypto()">Sell</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <button class="sell-all-button" @click="sellAllHoldings()">Sell ALL Cryptos</button>
+        <p class="note">
+          You cannot buy if you don't have enough USD.  
+          "Sell ALL" will sell all crypto holdings across every coin.
+        </p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  function tradingApp() {
+    return {
+      /****************************************
+       * Application State
+       ****************************************/
+      cryptos: [
+        { name: 'Bitcoin (BTC)', symbol: 'BTC' },
+        { name: 'Ethereum (ETH)', symbol: 'ETH' },
+        { name: 'Solana (SOL)', symbol: 'SOL' },
+        { name: 'Dogecoin (DOGE)', symbol: 'DOGE' },
+        { name: 'Cardano (ADA)', symbol: 'ADA' },
+      ],
+      // Selected crypto
+      selectedCrypto: 'BTC',
+
+      // Candle data for each crypto => array of { time, open, high, low, close }
+      candleData: {},
+
+      // The user's USD balance
+      balanceUSD: 100000,
+
+      // The user's crypto holdings
+      holdings: {},
+
+      // Input amount typed by user
+      tradeAmount: 0,
+
+      // Interval handle (so you can clear if needed)
+      priceInterval: null,
+
+      /****************************************
+       * Derived State / Getters
+       ****************************************/
+      get currentPrice() {
+        const data = this.candleData[this.selectedCrypto];
+        if (!data || data.length === 0) return 0;
+        return data[data.length - 1].close;
+      },
+      get totalPortfolioValue() {
+        // Sum of USD + sum( holdings[symbol] * current price )
+        let value = parseFloat(this.balanceUSD);
+        for (const { symbol } of this.cryptos) {
+          const hold = this.holdings[symbol] || 0;
+          const data = this.candleData[symbol];
+          if (data && data.length > 0) {
+            const currentPrice = data[data.length - 1].close;
+            value += hold * currentPrice;
+          }
+        }
+        return value;
+      },
+      get profitLossText() {
+        let diff = this.totalPortfolioValue - 100000;
+        let pct = (diff / 100000) * 100;
+        let sign = diff >= 0 ? '+' : '';
+        return `${sign}${this.formatUSD(diff)} (${sign}${pct.toFixed(2)}%)`;
+      },
+
+      /****************************************
+       * Initialization
+       ****************************************/
+      init() {
+        // Initialize data structures
+        this.cryptos.forEach(c => {
+          this.candleData[c.symbol] = [];
+        });
+        this.cryptos.forEach(c => {
+          if (this.holdings[c.symbol] === undefined) {
+            this.holdings[c.symbol] = 0;
+          }
+        });
+
+        // Load from cookies if available
+        this.loadFromCookies();
+
+        // Generate initial 50 candles for each crypto
+        this.cryptos.forEach(c => {
+          for (let i = 0; i < 50; i++) {
+            this.generateNewCandle(c.symbol);
+          }
+        });
+
+        // Update candles every 2 seconds
+        this.priceInterval = setInterval(() => {
+          this.cryptos.forEach(c => {
+            this.generateNewCandle(c.symbol);
+            // keep last 50
+            if (this.candleData[c.symbol].length > 50) {
+              this.candleData[c.symbol].shift();
+            }
+          });
+          this.drawCandlestickChart();
+        }, 2000);
+
+        // Initial draw
+        this.drawCandlestickChart();
+      },
+
+      /****************************************
+       * Candle Generation
+       ****************************************/
+      generateNewCandle(symbol) {
+        let candles = this.candleData[symbol];
+        let prevClose = candles.length
+          ? candles[candles.length - 1].close
+          : 100 + Math.random() * 400; // random start if none
+
+        // Base small random change
+        let baseVolatility = 0.08; // +/- 8%
+        let randChange = (Math.random() - 0.5) * 2 * baseVolatility;
+
+        // Occasionally produce bigger moves
+        let bigMoveChance = Math.random();
+        if (bigMoveChance < 0.1) {
+          // 10% chance for big move
+          let direction = Math.random() < 0.5 ? 1 : -1;
+          let magnitude = 0.2 + Math.random() * 0.5; // up to +/- 70%
+          randChange = direction * magnitude;
+        }
+
+        let newClose = prevClose * (1 + randChange);
+        if (newClose < 0) newClose = 0.01; // avoid zero or negative
+
+        let open = prevClose;
+        let close = newClose;
+        let high = Math.max(open, close) * (1 + Math.random() * 0.02);
+        let low = Math.min(open, close) * (1 - Math.random() * 0.02);
+
+        let candle = {
+          time: Date.now(),
+          open,
+          high,
+          low,
+          close,
+        };
+        candles.push(candle);
+      },
+
+      /****************************************
+       * Chart Drawing
+       ****************************************/
+      drawCandlestickChart() {
+        const canvas = document.getElementById('candlestickChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        // Clear the canvas
+        const w = canvas.clientWidth;
+        const h = canvas.clientHeight;
+
+        // Handle high DPI
+        canvas.width = w * window.devicePixelRatio;
+        canvas.height = h * window.devicePixelRatio;
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, 0, w, h);
+
+        let candles = this.candleData[this.selectedCrypto];
+        if (candles.length === 0) return;
+
+        // Only draw last 50 candles
+        let visible = candles.slice(-50);
+
+        // Compute min/max
+        let minPrice = Math.min(...visible.map(c => c.low));
+        let maxPrice = Math.max(...visible.map(c => c.high));
+
+        // Some padding
+        let pad = (maxPrice - minPrice) * 0.1;
+        minPrice -= pad;
+        maxPrice += pad;
+        if (minPrice < 0) minPrice = 0;
+
+        // Chart margins
+        let marginLeft = 50;
+        let marginBottom = 20;
+        let chartWidth = w - marginLeft;
+        let chartHeight = h - marginBottom;
+
+        // Grid lines & price labels
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        let horizontalLines = 5;
+        for (let i = 0; i <= horizontalLines; i++) {
+          let y = (chartHeight / horizontalLines) * i;
+          ctx.beginPath();
+          ctx.moveTo(marginLeft, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+
+          // Price label
+          let priceValue = maxPrice - (maxPrice - minPrice) * (y / chartHeight);
+          ctx.fillStyle = '#aaa';
+          ctx.font = '10px sans-serif';
+          ctx.fillText(priceValue.toFixed(2), 2, y + 3);
+        }
+
+        // Candle drawing
+        let candleWidth = chartWidth / visible.length - 2;
+
+        visible.forEach((c, i) => {
+          let x = marginLeft + i * (chartWidth / visible.length);
+          let openY = this.priceToY(c.open, minPrice, maxPrice, chartHeight);
+          let closeY = this.priceToY(c.close, minPrice, maxPrice, chartHeight);
+          let highY = this.priceToY(c.high, minPrice, maxPrice, chartHeight);
+          let lowY = this.priceToY(c.low, minPrice, maxPrice, chartHeight);
+
+          let isBullish = c.close >= c.open;
+          ctx.strokeStyle = isBullish ? '#00c851' : '#ff4444';
+          ctx.fillStyle = isBullish ? '#00c851' : '#ff4444';
+
+          // Wick
+          ctx.beginPath();
+          let midX = x + candleWidth / 2;
+          ctx.moveTo(midX, highY);
+          ctx.lineTo(midX, lowY);
+          ctx.stroke();
+
+          // Body
+          let bodyTop = Math.min(openY, closeY);
+          let bodyBottom = Math.max(openY, closeY);
+          let bodyHeight = bodyBottom - bodyTop;
+          ctx.fillRect(x, bodyTop, candleWidth, bodyHeight);
+        });
+
+        // Time labels
+        ctx.fillStyle = '#aaa';
+        ctx.font = '10px sans-serif';
+        let timeLabels = 5;
+        for (let i = 0; i <= timeLabels; i++) {
+          let idx = Math.floor((visible.length - 1) * (i / timeLabels));
+          if (idx >= visible.length) idx = visible.length - 1;
+          let c = visible[idx];
+          let timeX = marginLeft + idx * (chartWidth / visible.length);
+          ctx.fillText(this.formatTime(new Date(c.time)), timeX, chartHeight + 12);
+        }
+      },
+
+      priceToY(price, minPrice, maxPrice, chartHeight) {
+        let range = maxPrice - minPrice;
+        return (maxPrice - price) / range * chartHeight;
+      },
+      formatTime(date) {
+        let hh = String(date.getHours()).padStart(2, '0');
+        let mm = String(date.getMinutes()).padStart(2, '0');
+        let ss = String(date.getSeconds()).padStart(2, '0');
+        return `${hh}:${mm}:${ss}`;
+      },
+
+      /****************************************
+       * Trading Actions
+       ****************************************/
+      switchCrypto() {
+        // Redraw chart on crypto change
+        this.drawCandlestickChart();
+      },
+      buyCrypto() {
+        if (!this.tradeAmount || this.tradeAmount <= 0) return;
+        let cost = this.currentPrice * this.tradeAmount;
+        // Prevent buying if cost > balance
+        if (cost > this.balanceUSD) {
+          alert("Insufficient USD balance to complete this purchase.");
+          return;
+        }
+        this.balanceUSD -= cost;
+        this.holdings[this.selectedCrypto] += this.tradeAmount;
+        this.tradeAmount = 0;
+        this.saveToCookies();
+      },
+      sellCrypto() {
+        if (!this.tradeAmount || this.tradeAmount <= 0) return;
+        let proceeds = this.currentPrice * this.tradeAmount;
+        this.balanceUSD += proceeds;
+        this.holdings[this.selectedCrypto] -= this.tradeAmount; // can go negative if user over-sells
+        this.tradeAmount = 0;
+        this.saveToCookies();
+      },
+      quickTrade(amount) {
+        // +1 or -1 convenience trade
+        if (amount > 0) {
+          let cost = this.currentPrice * amount;
+          if (cost > this.balanceUSD) {
+            alert("Insufficient USD balance to complete this purchase.");
+            return;
+          }
+          this.balanceUSD -= cost;
+          this.holdings[this.selectedCrypto] += amount;
+        } else {
+          // negative => sell
+          let sellAmount = Math.abs(amount);
+          let proceeds = this.currentPrice * sellAmount;
+          this.balanceUSD += proceeds;
+          this.holdings[this.selectedCrypto] -= sellAmount;
+        }
+        this.saveToCookies();
+      },
+      sellAllHoldings() {
+        // Sells all crypto across every coin
+        this.cryptos.forEach(({ symbol }) => {
+          let amountOwned = this.holdings[symbol] || 0;
+          if (amountOwned > 0) {
+            let data = this.candleData[symbol];
+            if (data && data.length > 0) {
+              let price = data[data.length - 1].close;
+              let proceeds = price * amountOwned;
+              this.balanceUSD += proceeds;
+              this.holdings[symbol] = 0;
+            }
+          }
+        });
+        this.saveToCookies();
+      },
+
+      /****************************************
+       * Cookie Persistence
+       ****************************************/
+      saveToCookies() {
+        let data = {
+          balanceUSD: this.balanceUSD,
+          holdings: this.holdings,
+        };
+        let json = JSON.stringify(data);
+        let expiry = new Date();
+        expiry.setDate(expiry.getDate() + 7);
+        document.cookie = `tradingData=${encodeURIComponent(json)}; expires=${expiry.toUTCString()}; path=/;`;
+      },
+      loadFromCookies() {
+        let match = document.cookie.match(new RegExp('(^| )tradingData=([^;]+)'));
+        if (match) {
+          let json = decodeURIComponent(match[2]);
+          try {
+            let data = JSON.parse(json);
+            if (data.balanceUSD !== undefined) {
+              this.balanceUSD = data.balanceUSD;
+            }
+            if (data.holdings !== undefined) {
+              this.holdings = data.holdings;
+            }
+          } catch (err) {
+            console.error('Error parsing cookie data:', err);
+          }
+        }
+      },
+
+      /****************************************
+       * Utility
+       ****************************************/
+      formatUSD(value) {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD'
+        }).format(value);
+      },
+    };
+  }
+</script>
+
+</body>
+</html>
