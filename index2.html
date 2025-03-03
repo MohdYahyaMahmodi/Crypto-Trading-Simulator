@@ -1,0 +1,2121 @@
+<!DOCTYPE html>
+<html lang="en" x-data="tradingApp()" x-init="init()">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CryptoTrade Pro</title>
+  <!-- Alpine.js and Chart.js -->
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <style>
+    /* RESET / GLOBAL STYLES */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    }
+
+    :root {
+      --primary: #00C805;
+      --primary-dark: #00A303;
+      --secondary: #FF5000;
+      --danger: #FF3B30;
+      --warning: #FF9500;
+      --success: #00C805;
+      --dark: #1D1D1F;
+      --medium: #86868B;
+      --light: #F5F5F7;
+      --border: #E5E5EA;
+      --card-bg: #FFFFFF;
+      --body-bg: #F5F5F7;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+      --chart-grid: #E5E5EA;
+    }
+
+    body {
+      background-color: var(--body-bg);
+      color: var(--dark);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background-color: #FFF;
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+    }
+    
+    .logo svg {
+      margin-right: 0.5rem;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .balance-display {
+      background: var(--light);
+      padding: 0.5rem 1rem;
+      border-radius: 50px;
+      font-weight: 600;
+    }
+
+    .notifications {
+      position: fixed;
+      top: 4rem;
+      right: 1rem;
+      z-index: 1000;
+      width: 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .notification {
+      background: #FFF;
+      border-left: 4px solid var(--primary);
+      padding: 1rem;
+      border-radius: 4px;
+      box-shadow: var(--shadow);
+      animation: slideIn 0.3s ease-out;
+      position: relative;
+    }
+
+    .notification.warning {
+      border-left-color: var(--warning);
+    }
+
+    .notification.danger {
+      border-left-color: var(--danger);
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .notification-close {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      cursor: pointer;
+      color: var(--medium);
+      font-size: 0.8rem;
+    }
+
+    main {
+      flex: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      width: 100%;
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    .tab-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+
+    .tab-button {
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      background: transparent;
+      border: none;
+      font-weight: 600;
+      color: var(--medium);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-button.active {
+      color: var(--primary);
+      background: rgba(0, 200, 5, 0.1);
+    }
+
+    .tab-button:hover:not(.active) {
+      background: var(--light);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      height: fit-content;
+    }
+
+    .card-header {
+      padding: 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .card-content {
+      padding: 1.25rem;
+    }
+
+    /* LEFT SECTION */
+    .left-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Chart styles */
+    .chart-card {
+      min-height: 400px;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .chart-price {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+
+    .price-change {
+      display: flex;
+      align-items: center;
+      font-weight: 600;
+      gap: 0.25rem;
+    }
+
+    .chart-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .time-filter {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .time-button {
+      padding: 0.35rem 0.7rem;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: transparent;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .time-button.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .chart-container {
+      position: relative;
+      height: 300px;
+      width: 100%;
+    }
+
+    /* RIGHT SECTION */
+    .right-section {
+      width: 350px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .portfolio-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    .stat-card {
+      background: var(--light);
+      padding: 1rem;
+      border-radius: 8px;
+    }
+
+    .stat-title {
+      font-size: 0.8rem;
+      color: var(--medium);
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .holdings-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .holding-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .holding-item:last-child {
+      border-bottom: none;
+    }
+
+    .holding-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .crypto-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--light);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--dark);
+    }
+
+    .holding-name {
+      font-weight: 600;
+    }
+
+    .holding-symbol {
+      color: var(--medium);
+      font-size: 0.8rem;
+    }
+
+    .holding-details {
+      text-align: right;
+    }
+
+    .holding-value {
+      font-weight: 600;
+    }
+
+    .holding-amount {
+      color: var(--medium);
+      font-size: 0.8rem;
+    }
+
+    /* Trade form */
+    .trade-form {
+      padding: 1.25rem;
+    }
+
+    .input-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .input-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: var(--medium);
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.2s;
+    }
+
+    .input-field:focus {
+      border-color: var(--primary);
+      outline: none;
+    }
+
+    .input-addon {
+      display: flex;
+      align-items: center;
+    }
+
+    .input-addon .input-field {
+      border-radius: 8px 0 0 8px;
+    }
+
+    .addon-label {
+      background: var(--light);
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-left: none;
+      border-radius: 0 8px 8px 0;
+      color: var(--medium);
+    }
+
+    .order-tabs {
+      display: flex;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .order-tab {
+      flex: 1;
+      text-align: center;
+      padding: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+    }
+
+    .order-tab.active {
+      color: var(--primary);
+      box-shadow: inset 0 -2px 0 var(--primary);
+    }
+
+    .trade-buttons {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .trade-button {
+      flex: 1;
+      padding: 0.85rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .buy-button {
+      background: var(--primary);
+      color: white;
+    }
+
+    .buy-button:hover {
+      background: var(--primary-dark);
+    }
+
+    .sell-button {
+      background: var(--danger);
+      color: white;
+    }
+
+    .sell-button:hover {
+      background: #E0352B;
+    }
+
+    /* Mobile styles */
+    @media (max-width: 768px) {
+      main {
+        flex-direction: column;
+      }
+
+      .right-section {
+        width: 100%;
+      }
+
+      .chart-price {
+        font-size: 1.5rem;
+      }
+    }
+
+    /* Transaction History */
+    .transaction-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .transaction-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .transaction-item:last-child {
+      border-bottom: none;
+    }
+
+    .transaction-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--light);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+
+    .transaction-info {
+      flex: 1;
+      margin-left: 0.75rem;
+    }
+
+    .transaction-type {
+      font-weight: 600;
+    }
+
+    .transaction-date {
+      color: var(--medium);
+      font-size: 0.8rem;
+    }
+
+    .transaction-value {
+      text-align: right;
+      font-weight: 600;
+    }
+
+    /* News Feed */
+    .news-item {
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .news-item:last-child {
+      border-bottom: none;
+    }
+
+    .news-title {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .news-meta {
+      color: var(--medium);
+      font-size: 0.8rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 12px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      padding: 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.5rem;
+    }
+
+    .modal-body {
+      padding: 1.25rem;
+    }
+
+    .modal-footer {
+      padding: 1.25rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+
+    /* Loading spinner */
+    .loader {
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      border: 3px solid rgba(0,0,0,0.1);
+      border-radius: 50%;
+      border-top-color: var(--primary);
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Utility classes */
+    .green-text {
+      color: var(--success);
+    }
+
+    .red-text {
+      color: var(--danger);
+    }
+
+    .flex-center {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .m-top {
+      margin-top: 1rem;
+    }
+    
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-content">
+    <div class="logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="#00C805" stroke-width="2"/>
+        <path d="M12 6V18M16 10L12 6L8 10M8 14L12 18L16 14" stroke="#00C805" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      CryptoTrade Pro
+    </div>
+    <div class="header-right">
+      <div class="balance-display" x-text="formatUSD(balanceUSD)"></div>
+    </div>
+  </div>
+</header>
+
+<!-- Notifications area -->
+<div class="notifications" id="notifications"></div>
+
+<main>
+  <!-- LEFT SECTION -->
+  <div class="left-section">
+    <!-- Tab Navigation -->
+    <div class="tab-buttons">
+      <button class="tab-button" :class="{ 'active': activeTab === 'dashboard' }" @click="activeTab = 'dashboard'">Dashboard</button>
+      <button class="tab-button" :class="{ 'active': activeTab === 'trade' }" @click="activeTab = 'trade'">Trade</button>
+      <button class="tab-button" :class="{ 'active': activeTab === 'transactions' }" @click="activeTab = 'transactions'">Transactions</button>
+      <button class="tab-button" :class="{ 'active': activeTab === 'news' }" @click="activeTab = 'news'">News</button>
+    </div>
+
+    <!-- Dashboard Tab -->
+    <div x-show="activeTab === 'dashboard'">
+      <!-- Portfolio Performance Chart -->
+      <div class="card chart-card">
+        <div class="card-header">
+          <div class="card-title">Portfolio Performance</div>
+          <div class="time-filter">
+            <button class="time-button" :class="{ 'active': timeFilter === '1D' }" @click="timeFilter = '1D'">1D</button>
+            <button class="time-button" :class="{ 'active': timeFilter === '1W' }" @click="timeFilter = '1W'">1W</button>
+            <button class="time-button" :class="{ 'active': timeFilter === '1M' }" @click="timeFilter = '1M'">1M</button>
+            <button class="time-button" :class="{ 'active': timeFilter === '3M' }" @click="timeFilter = '3M'">3M</button>
+            <button class="time-button" :class="{ 'active': timeFilter === 'ALL' }" @click="timeFilter = 'ALL'">ALL</button>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="chart-header">
+            <div>
+              <div class="chart-price" x-text="formatUSD(totalPortfolioValue)"></div>
+              <div class="price-change" :class="totalPortfolioValue >= 100000 ? 'green-text' : 'red-text'">
+                <span x-text="profitLossText"></span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M7 14L12 9L17 14" :stroke="totalPortfolioValue >= 100000 ? '#00C805' : '#FF3B30'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="portfolioChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Portfolio Summary -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Portfolio Summary</div>
+        </div>
+        <div class="card-content">
+          <div class="portfolio-stats">
+            <div class="stat-card">
+              <div class="stat-title">Cash Available</div>
+              <div class="stat-value" x-text="formatUSD(balanceUSD)"></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-title">Crypto Value</div>
+              <div class="stat-value" x-text="formatUSD(cryptoValue)"></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-title">Best Performer</div>
+              <div class="stat-value" x-text="bestPerformer.symbol"></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-title">Worst Performer</div>
+              <div class="stat-value" x-text="worstPerformer.symbol"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Holdings List -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Your Holdings</div>
+        </div>
+        <div class="card-content">
+          <div class="holdings-list">
+            <template x-for="crypto in cryptos" :key="crypto.symbol">
+              <div class="holding-item" x-show="holdings[crypto.symbol] > 0">
+                <div class="holding-info">
+                  <div class="crypto-icon" x-text="crypto.symbol.substring(0, 1)"></div>
+                  <div>
+                    <div class="holding-name" x-text="crypto.name.split(' ')[0]"></div>
+                    <div class="holding-symbol" x-text="crypto.symbol"></div>
+                  </div>
+                </div>
+                <div class="holding-details">
+                  <div class="holding-value" x-text="formatUSD(currentPriceOf(crypto.symbol) * holdings[crypto.symbol])"></div>
+                  <div class="holding-amount" x-text="holdings[crypto.symbol].toFixed(6) + ' ' + crypto.symbol"></div>
+                </div>
+              </div>
+            </template>
+            <div class="holding-item" x-show="Object.values(holdings).every(h => h <= 0)">
+              <div class="holding-info">
+                <div>You don't have any crypto holdings yet.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trade Tab -->
+    <div x-show="activeTab === 'trade'">
+      <!-- Crypto Chart -->
+      <div class="card chart-card">
+        <div class="card-header">
+          <div class="crypto-selector">
+            <select id="crypto-select" x-model="selectedCrypto" @change="switchCrypto()">
+              <template x-for="crypto in cryptos" :key="crypto.symbol">
+                <option :value="crypto.symbol" x-text="crypto.name"></option>
+              </template>
+            </select>
+          </div>
+          <div class="time-filter">
+            <button class="time-button" :class="{ 'active': timeFilter === '1D' }" @click="timeFilter = '1D'">1D</button>
+            <button class="time-button" :class="{ 'active': timeFilter === '1W' }" @click="timeFilter = '1W'">1W</button>
+            <button class="time-button" :class="{ 'active': timeFilter === '1M' }" @click="timeFilter = '1M'">1M</button>
+            <button class="time-button" :class="{ 'active': timeFilter === '3M' }" @click="timeFilter = '3M'">3M</button>
+            <button class="time-button" :class="{ 'active': timeFilter === 'ALL' }" @click="timeFilter = 'ALL'">ALL</button>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="chart-header">
+            <div>
+              <div class="chart-price" x-text="formatUSD(currentPriceOf(selectedCrypto))"></div>
+              <div class="price-change" :class="priceChange24h >= 0 ? 'green-text' : 'red-text'">
+                <span x-text="formatChange(priceChange24h)"></span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M7 14L12 9L17 14" :stroke="priceChange24h >= 0 ? '#00C805' : '#FF3B30'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="cryptoChart"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Trade Form -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Trade <span x-text="selectedCrypto"></span></div>
+        </div>
+        <div class="trade-form">
+          <div class="order-tabs">
+            <div class="order-tab" :class="{ 'active': orderType === 'market' }" @click="orderType = 'market'">Market</div>
+            <div class="order-tab" :class="{ 'active': orderType === 'limit' }" @click="orderType = 'limit'">Limit</div>
+          </div>
+          
+          <template x-if="orderType === 'market'">
+            <div>
+              <div class="input-group">
+                <label class="input-label">Amount</label>
+                <div class="input-addon">
+                  <input type="number" class="input-field" x-model.number="tradeAmount" placeholder="0.00" min="0" step="any">
+                  <span class="addon-label" x-text="selectedCrypto"></span>
+                </div>
+              </div>
+              
+              <div class="input-group">
+                <label class="input-label">Total Cost/Proceeds</label>
+                <div class="input-addon">
+                  <input type="number" class="input-field" x-model.number="estimatedTotal" readonly>
+                  <span class="addon-label">USD</span>
+                </div>
+              </div>
+              
+              <div class="trade-buttons">
+                <button class="trade-button buy-button" @click="buyCrypto()">Buy</button>
+                <button class="trade-button sell-button" @click="sellCrypto()">Sell</button>
+              </div>
+            </div>
+          </template>
+          
+          <template x-if="orderType === 'limit'">
+            <div>
+              <div class="input-group">
+                <label class="input-label">Amount</label>
+                <div class="input-addon">
+                  <input type="number" class="input-field" x-model.number="tradeAmount" placeholder="0.00" min="0" step="any">
+                  <span class="addon-label" x-text="selectedCrypto"></span>
+                </div>
+              </div>
+              
+              <div class="input-group">
+                <label class="input-label">Limit Price</label>
+                <div class="input-addon">
+                  <input type="number" class="input-field" x-model.number="limitPrice" placeholder="0.00" min="0" step="any">
+                  <span class="addon-label">USD</span>
+                </div>
+              </div>
+              
+              <div class="input-group">
+                <label class="input-label">Total Cost/Proceeds</label>
+                <div class="input-addon">
+                  <input type="number" class="input-field" x-model.number="estimatedLimitTotal" readonly>
+                  <span class="addon-label">USD</span>
+                </div>
+              </div>
+              
+              <div class="trade-buttons">
+                <button class="trade-button buy-button" @click="placeLimitOrder('buy')">Place Buy Order</button>
+                <button class="trade-button sell-button" @click="placeLimitOrder('sell')">Place Sell Order</button>
+              </div>
+            </div>
+          </template>
+          
+          <div class="m-top">
+            <p class="note">Your current holdings: <strong x-text="(holdings[selectedCrypto] || 0).toFixed(6) + ' ' + selectedCrypto"></strong></p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Transactions Tab -->
+    <div x-show="activeTab === 'transactions'">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Transaction History</div>
+        </div>
+        <div class="card-content">
+          <div class="transaction-list">
+            <template x-for="(tx, index) in transactions" :key="index">
+              <div class="transaction-item">
+                <div class="transaction-icon" :style="{ 'background-color': tx.type === 'buy' ? 'rgba(0, 200, 5, 0.1)' : 'rgba(255, 59, 48, 0.1)', 'color': tx.type === 'buy' ? '#00C805' : '#FF3B30' }" x-text="tx.type === 'buy' ? '↓' : '↑'"></div>
+                <div class="transaction-info">
+                  <div class="transaction-type" x-text="tx.type.charAt(0).toUpperCase() + tx.type.slice(1) + ' ' + tx.crypto"></div>
+                  <div class="transaction-date" x-text="formatDate(tx.timestamp)"></div>
+                </div>
+                <div class="transaction-value">
+                  <div x-text="(tx.type === 'buy' ? '-' : '+') + formatUSD(tx.amount * tx.price)"></div>
+                  <div class="transaction-date" x-text="tx.amount.toFixed(6) + ' ' + tx.crypto"></div>
+                </div>
+              </div>
+            </template>
+            <div class="transaction-item" x-show="transactions.length === 0">
+              <div>No transactions yet.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- News Tab -->
+    <div x-show="activeTab === 'news'">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Crypto News</div>
+        </div>
+        <div class="card-content">
+          <div id="news-list">
+            <template x-for="(item, index) in news" :key="index">
+              <div class="news-item">
+                <div class="news-title" x-text="item.title"></div>
+                <p x-text="item.summary"></p>
+                <div class="news-meta">
+                  <span x-text="formatDate(item.timestamp)"></span>
+                  <span x-text="'Impact: ' + item.impact"></span>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT SECTION -->
+  <div class="right-section">
+    <!-- Active Orders Card (only shows when there are pending orders) -->
+    <div class="card" x-show="pendingOrders.length > 0">
+      <div class="card-header">
+        <div class="card-title">Pending Orders</div>
+      </div>
+      <div class="card-content">
+        <div class="holdings-list">
+          <template x-for="(order, index) in pendingOrders" :key="index">
+            <div class="holding-item">
+              <div class="holding-info">
+                <div class="crypto-icon" :style="{ 'background-color': order.type === 'buy' ? 'rgba(0, 200, 5, 0.1)' : 'rgba(255, 59, 48, 0.1)', 'color': order.type === 'buy' ? '#00C805' : '#FF3B30' }" x-text="order.type === 'buy' ? 'B' : 'S'"></div>
+                <div>
+                  <div class="holding-name" x-text="order.type.toUpperCase() + ' ' + order.crypto"></div>
+                  <div class="holding-symbol" x-text="order.amount.toFixed(6) + ' @ ' + formatUSD(order.price)"></div>
+                </div>
+              </div>
+              <div class="holding-details">
+                <button @click="cancelOrder(index)" style="background: #F5F5F7; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Cancel</button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Market Overview Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Market Overview</div>
+      </div>
+      <div class="card-content">
+        <div class="holdings-list">
+          <template x-for="crypto in cryptos" :key="crypto.symbol">
+            <div class="holding-item" @click="selectedCrypto = crypto.symbol; switchCrypto(); activeTab = 'trade'" style="cursor: pointer;">
+              <div class="holding-info">
+                <div class="crypto-icon" x-text="crypto.symbol.substring(0, 1)"></div>
+                <div>
+                  <div class="holding-name" x-text="crypto.name.split(' ')[0]"></div>
+                  <div class="holding-symbol" x-text="crypto.symbol"></div>
+                </div>
+              </div>
+              <div class="holding-details">
+                <div class="holding-value" x-text="formatUSD(currentPriceOf(crypto.symbol))"></div>
+                <div class="holding-amount" :class="crypto.change24h >= 0 ? 'green-text' : 'red-text'" x-text="formatChange(crypto.change24h)"></div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Quick Actions Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Quick Actions</div>
+      </div>
+      <div class="card-content">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <button @click="showDepositModal()" style="background: var(--primary); color: white; border: none; padding: 0.75rem; border-radius: 8px; cursor: pointer; font-weight: 600;">Deposit</button>
+          <button @click="showWithdrawModal()" style="background: var(--light); color: var(--dark); border: none; padding: 0.75rem; border-radius: 8px; cursor: pointer; font-weight: 600;">Withdraw</button>
+          <button @click="sellAllHoldings()" style="background: var(--light); color: var(--dark); border: none; padding: 0.75rem; border-radius: 8px; cursor: pointer; font-weight: 600; grid-column: span 2;">Sell All Crypto</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Deposit Modal -->
+<div class="modal-backdrop" x-show="showingDepositModal" x-transition>
+  <div class="modal" @click.outside="showingDepositModal = false">
+    <div class="modal-header">
+      <div class="modal-title">Deposit Funds</div>
+      <button class="modal-close" @click="showingDepositModal = false">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="input-group">
+        <label class="input-label">Amount to Deposit</label>
+        <div class="input-addon">
+          <input type="number" class="input-field" x-model.number="depositAmount" placeholder="0.00" min="0" step="any">
+          <span class="addon-label">USD</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button @click="showingDepositModal = false" style="background: var(--light); color: var(--dark); border: none; padding: 0.75rem; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
+      <button @click="depositFunds()" style="background: var(--primary); color: white; border: none; padding: 0.75rem; border-radius: 8px; cursor: pointer; font-weight: 600;">Deposit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Withdraw Modal -->
+<div class="modal-backdrop" x-show="showingWithdrawModal" x-transition>
+  <div class="modal" @click.outside="showingWithdrawModal = false">
+    <div class="modal-header">
+      <div class="modal-title">Withdraw Funds</div>
+      <button class="modal-close" @click="showingWithdrawModal = false">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="input-group">
+        <label class="input-label">Available Balance</label>
+        <div class="input-addon">
+          <input type="text" class="input-field" :value="formatUSD(balanceUSD)" readonly>
+          <span class="addon-label">USD</span>
+        </div>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Amount to Withdraw</label>
+        <div class="input-addon">
+          <input type="number" class="input-field" x-model.number="withdrawAmount" placeholder="0.00" min="0" :max="balanceUSD" step="any">
+          <span class="addon-label">USD</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button @click="showingWithdrawModal = false" style="background: var(--light); color: var(--dark); border: none; padding: 0.75rem; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
+      <button @click="withdrawFunds()" style="background: var(--primary); color: white; border: none; padding: 0.75rem; border-radius: 8px; cursor: pointer; font-weight: 600;">Withdraw</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tutorial Modal (shown on first visit) -->
+<div class="modal-backdrop" x-show="showingTutorial" x-transition>
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Welcome to CryptoTrade Pro</div>
+      <button class="modal-close" @click="showingTutorial = false">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>This is a crypto trading simulator that allows you to practice trading without risking real money. Here's how to get started:</p>
+      <br>
+      <ul style="list-style-type: disc; padding-left: 20px;">
+        <li>You start with $100,000 of virtual money</li>
+        <li>Trade popular cryptocurrencies at simulated market prices</li>
+        <li>Use Market orders for immediate trades, or Limit orders for future trades</li>
+        <li>Track your portfolio performance in the Dashboard</li>
+        <li>Follow crypto news that may impact market prices</li>
+        <li>Your progress is automatically saved</li>
+      </ul>
+      <br>
+      <p>Ready to become a crypto trading pro?</p>
+    </div>
+    <div class="modal-footer">
+      <button @click="showingTutorial = false" style="background: var(--primary); color: white; border: none; padding: 0.75rem; border-radius: 8px; cursor: pointer; font-weight: 600;">Start Trading</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function tradingApp() {
+    return {
+      /****************************************
+       * Application State
+       ****************************************/
+      // UI state
+      activeTab: 'dashboard',
+      timeFilter: '1D',
+      orderType: 'market',
+      showingDepositModal: false,
+      showingWithdrawModal: false,
+      showingTutorial: false,
+      depositAmount: 0,
+      withdrawAmount: 0,
+      
+      // Market data
+      cryptos: [
+        { name: 'Bitcoin (BTC)', symbol: 'BTC', change24h: 0 },
+        { name: 'Ethereum (ETH)', symbol: 'ETH', change24h: 0 },
+        { name: 'Solana (SOL)', symbol: 'SOL', change24h: 0 },
+        { name: 'Dogecoin (DOGE)', symbol: 'DOGE', change24h: 0 },
+        { name: 'Cardano (ADA)', symbol: 'ADA', change24h: 0 },
+        { name: 'Binance Coin (BNB)', symbol: 'BNB', change24h: 0 },
+        { name: 'Ripple (XRP)', symbol: 'XRP', change24h: 0 },
+      ],
+      
+      // Selected crypto
+      selectedCrypto: 'BTC',
+      
+      // Candle data for each crypto
+      candleData: {},
+      
+      // The user's USD balance
+      balanceUSD: 100000,
+      
+      // The user's crypto holdings
+      holdings: {},
+      
+      // Trade input
+      tradeAmount: 0,
+      limitPrice: 0,
+      
+      // Transactions history
+      transactions: [],
+      
+      // Pending limit orders
+      pendingOrders: [],
+      
+      // Interval handle
+      priceInterval: null,
+      
+      // Portfolio history (for chart)
+      portfolioHistory: [],
+      
+      // News feed
+      news: [],
+      
+      // Price change
+      priceChange24h: 0,
+      
+      /****************************************
+       * Derived State / Getters
+       ****************************************/
+      get currentPrice() {
+        return this.currentPriceOf(this.selectedCrypto);
+      },
+      
+      get cryptoValue() {
+        let value = 0;
+        for (const { symbol } of this.cryptos) {
+          const hold = this.holdings[symbol] || 0;
+          value += hold * this.currentPriceOf(symbol);
+        }
+        return value;
+      },
+      
+      get totalPortfolioValue() {
+        return parseFloat(this.balanceUSD) + this.cryptoValue;
+      },
+      
+      get profitLossText() {
+        let diff = this.totalPortfolioValue - 100000;
+        let pct = (diff / 100000) * 100;
+        let sign = diff >= 0 ? '+' : '';
+        return `${sign}${this.formatUSD(diff)} (${sign}${pct.toFixed(2)}%)`;
+      },
+      
+      get estimatedTotal() {
+        return this.tradeAmount * this.currentPrice;
+      },
+      
+      get estimatedLimitTotal() {
+        return this.tradeAmount * this.limitPrice;
+      },
+      
+      get bestPerformer() {
+        if (Object.keys(this.holdings).length === 0) {
+          return { symbol: 'None', change: 0 };
+        }
+        
+        let best = { symbol: 'None', change: -Infinity };
+        for (const crypto of this.cryptos) {
+          if ((this.holdings[crypto.symbol] || 0) > 0 && crypto.change24h > best.change) {
+            best = { symbol: crypto.symbol, change: crypto.change24h };
+          }
+        }
+        
+        if (best.symbol === 'None') {
+          return { symbol: 'None', change: 0 };
+        }
+        
+        return best;
+      },
+      
+      get worstPerformer() {
+        if (Object.keys(this.holdings).length === 0) {
+          return { symbol: 'None', change: 0 };
+        }
+        
+        let worst = { symbol: 'None', change: Infinity };
+        for (const crypto of this.cryptos) {
+          if ((this.holdings[crypto.symbol] || 0) > 0 && crypto.change24h < worst.change) {
+            worst = { symbol: crypto.symbol, change: crypto.change24h };
+          }
+        }
+        
+        if (worst.symbol === 'None') {
+          return { symbol: 'None', change: 0 };
+        }
+        
+        return worst;
+      },
+      
+      /****************************************
+       * Charts
+       ****************************************/
+      portfolioChart: null,
+      cryptoChart: null,
+      
+      /****************************************
+       * Initialization
+       ****************************************/
+      init() {
+        // Initialize data structures
+        this.cryptos.forEach(c => {
+          this.candleData[c.symbol] = [];
+          if (this.holdings[c.symbol] === undefined) {
+            this.holdings[c.symbol] = 0;
+          }
+        });
+        
+        // Load from cookies if available
+        this.loadFromCookies();
+        
+        // Generate initial data for each crypto
+        const initialPrices = {
+          'BTC': 50000 + Math.random() * 5000,
+          'ETH': 3000 + Math.random() * 500,
+          'SOL': 150 + Math.random() * 30,
+          'DOGE': 0.2 + Math.random() * 0.1,
+          'ADA': 1.2 + Math.random() * 0.3,
+          'BNB': 400 + Math.random() * 50,
+          'XRP': 0.8 + Math.random() * 0.2
+        };
+        
+        this.cryptos.forEach(c => {
+          const startPrice = initialPrices[c.symbol] || 100 + Math.random() * 400;
+          // Generate 100 candles for history
+          for (let i = 0; i < 100; i++) {
+            this.generateCandleWithTrend(c.symbol, startPrice);
+          }
+          
+          // Set the 24h price change
+          const data = this.candleData[c.symbol];
+          if (data.length > 24) {
+            const oldPrice = data[data.length - 25].close;
+            const newPrice = data[data.length - 1].close;
+            c.change24h = ((newPrice - oldPrice) / oldPrice) * 100;
+          }
+        });
+        
+        // Setup portfolio history
+        this.initPortfolioHistory();
+        
+        // Generate news feed
+        this.generateNewsFeed();
+        
+        // Update candles every 2 seconds
+        this.priceInterval = setInterval(() => {
+          this.updatePrices();
+          this.checkPendingOrders();
+          this.updateCharts();
+          
+          // Every 30 seconds, potentially generate news
+          if (Math.random() < 0.1) { // 10% chance each time
+            this.generateNewsItem();
+          }
+          
+          // Save state
+          this.saveToCookies();
+          
+        }, 2000);
+        
+        // Draw initial charts
+        setTimeout(() => {
+          this.initPortfolioChart();
+          this.initCryptoChart();
+          this.showingTutorial = !this.hasSavedData();
+        }, 100);
+      },
+      
+      initPortfolioHistory() {
+        // Start with 100 data points of the starting value
+        this.portfolioHistory = [];
+        for (let i = 0; i < 100; i++) {
+          this.portfolioHistory.push({
+            timestamp: Date.now() - (100 - i) * 2000,
+            value: 100000
+          });
+        }
+      },
+      
+      initPortfolioChart() {
+        const ctx = document.getElementById('portfolioChart').getContext('2d');
+        
+        // Extract the data
+        const labels = this.portfolioHistory.map(p => this.formatTimeShort(new Date(p.timestamp)));
+        const data = this.portfolioHistory.map(p => p.value);
+        
+        // Determine if overall trend is positive
+        const isPositive = data[data.length - 1] >= data[0];
+        
+        this.portfolioChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Portfolio Value',
+              data: data,
+              borderColor: isPositive ? '#00C805' : '#FF3B30',
+              backgroundColor: function(context) {
+                const chart = context.chart;
+                const {ctx, chartArea} = chart;
+                if (!chartArea) {
+                  return null;
+                }
+                
+                const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+                gradient.addColorStop(0, 'rgba(0, 200, 5, 0)');
+                gradient.addColorStop(1, 'rgba(0, 200, 5, 0.1)');
+                return gradient;
+              },
+              tension: 0.4,
+              fill: true,
+              pointRadius: 0,
+              borderWidth: 2,
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                border: {
+                  display: false
+                },
+                grid: {
+                  color: 'rgba(229, 229, 234, 0.5)',
+                },
+                ticks: {
+                  callback: function(value) {
+                    return '$' + value.toLocaleString();
+                  }
+                }
+              },
+              x: {
+                border: {
+                  display: false
+                },
+                grid: {
+                  display: false
+                },
+                ticks: {
+                  maxTicksLimit: 6,
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                mode: 'index',
+                intersect: false,
+                callbacks: {
+                  label: function(context) {
+                    return '$' + context.raw.toLocaleString();
+                  }
+                }
+              }
+            },
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            responsive: true,
+            maintainAspectRatio: false,
+          }
+        });
+      },
+      
+      initCryptoChart() {
+        const ctx = document.getElementById('cryptoChart').getContext('2d');
+        
+        // Extract the data
+        const data = this.candleData[this.selectedCrypto];
+        const labels = data.map(p => this.formatTimeShort(new Date(p.time)));
+        const prices = data.map(p => p.close);
+        
+        // Determine if overall trend is positive
+        const isPositive = prices[prices.length - 1] >= prices[0];
+        
+        this.cryptoChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: this.selectedCrypto + ' Price',
+              data: prices,
+              borderColor: isPositive ? '#00C805' : '#FF3B30',
+              backgroundColor: function(context) {
+                const chart = context.chart;
+                const {ctx, chartArea} = chart;
+                if (!chartArea) {
+                  return null;
+                }
+                
+                const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+                if (isPositive) {
+                  gradient.addColorStop(0, 'rgba(0, 200, 5, 0)');
+                  gradient.addColorStop(1, 'rgba(0, 200, 5, 0.1)');
+                } else {
+                  gradient.addColorStop(0, 'rgba(255, 59, 48, 0)');
+                  gradient.addColorStop(1, 'rgba(255, 59, 48, 0.1)');
+                }
+                return gradient;
+              },
+              tension: 0.4,
+              fill: true,
+              pointRadius: 0,
+              borderWidth: 2,
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                border: {
+                  display: false
+                },
+                grid: {
+                  color: 'rgba(229, 229, 234, 0.5)',
+                },
+                ticks: {
+                  callback: function(value) {
+                    return '$' + value.toLocaleString();
+                  }
+                }
+              },
+              x: {
+                border: {
+                  display: false
+                },
+                grid: {
+                  display: false
+                },
+                ticks: {
+                  maxTicksLimit: 6,
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                mode: 'index',
+                intersect: false,
+                callbacks: {
+                  label: function(context) {
+                    return '$' + context.raw.toLocaleString();
+                  }
+                }
+              }
+            },
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            responsive: true,
+            maintainAspectRatio: false,
+          }
+        });
+      },
+      
+      updateCharts() {
+        if (this.portfolioChart) {
+          // Update portfolio chart data
+          this.portfolioChart.data.labels = this.portfolioHistory.map(p => this.formatTimeShort(new Date(p.timestamp)));
+          this.portfolioChart.data.datasets[0].data = this.portfolioHistory.map(p => p.value);
+          
+          // Update color based on trend
+          const data = this.portfolioChart.data.datasets[0].data;
+          const isPositive = data[data.length - 1] >= data[0];
+          this.portfolioChart.data.datasets[0].borderColor = isPositive ? '#00C805' : '#FF3B30';
+          
+          this.portfolioChart.update();
+        }
+        
+        if (this.cryptoChart) {
+          const data = this.candleData[this.selectedCrypto];
+          this.cryptoChart.data.labels = data.map(p => this.formatTimeShort(new Date(p.time)));
+          this.cryptoChart.data.datasets[0].data = data.map(p => p.close);
+          
+          // Update color based on trend
+          const prices = this.cryptoChart.data.datasets[0].data;
+          const isPositive = prices[prices.length - 1] >= prices[0];
+          this.cryptoChart.data.datasets[0].borderColor = isPositive ? '#00C805' : '#FF3B30';
+          
+          this.cryptoChart.update();
+        }
+      },
+      
+      /****************************************
+       * Price Generation
+       ****************************************/
+      updatePrices() {
+        // Update prices for all cryptos
+        this.cryptos.forEach(c => {
+          this.generateNewCandle(c.symbol);
+          
+          // Keep only latest 100 candles
+          if (this.candleData[c.symbol].length > 100) {
+            this.candleData[c.symbol].shift();
+          }
+          
+          // Update 24h change
+          const data = this.candleData[c.symbol];
+          if (data.length > 24) {
+            const oldPrice = data[data.length - 25].close;
+            const newPrice = data[data.length - 1].close;
+            c.change24h = ((newPrice - oldPrice) / oldPrice) * 100;
+          }
+        });
+        
+        // Update portfolio value history
+        this.portfolioHistory.push({
+          timestamp: Date.now(),
+          value: this.totalPortfolioValue
+        });
+        
+        // Keep only latest 100 points
+        if (this.portfolioHistory.length > 100) {
+          this.portfolioHistory.shift();
+        }
+        
+        // Update 24h price change for selected crypto
+        const data = this.candleData[this.selectedCrypto];
+        if (data.length > 24) {
+          const oldPrice = data[data.length - 25].close;
+          const newPrice = data[data.length - 1].close;
+          this.priceChange24h = ((newPrice - oldPrice) / oldPrice) * 100;
+        }
+      },
+      
+      generateCandleWithTrend(symbol, basePrice = null) {
+        let candles = this.candleData[symbol];
+        let prevClose = basePrice;
+        
+        if (prevClose === null) {
+          prevClose = candles.length 
+            ? candles[candles.length - 1].close 
+            : 100 + Math.random() * 400;
+        }
+        
+        // Base volatility depends on the crypto
+        let baseVolatility;
+        switch(symbol) {
+          case 'BTC': baseVolatility = 0.005; break; // 0.5%
+          case 'ETH': baseVolatility = 0.008; break; // 0.8%
+          case 'SOL': baseVolatility = 0.015; break; // 1.5%
+          case 'DOGE': baseVolatility = 0.02; break; // 2%
+          case 'ADA': baseVolatility = 0.012; break; // 1.2%
+          case 'BNB': baseVolatility = 0.007; break; // 0.7%
+          case 'XRP': baseVolatility = 0.01; break; // 1%
+          default: baseVolatility = 0.01;
+        }
+        
+        // Trend factors
+        let longTermTrend = Math.sin(Date.now() / 86400000) * 0.00008; // Slight daily wave
+        let mediumTermTrend = Math.sin(Date.now() / 3600000) * 0.00005; // Hourly fluctuation
+        let randomFactor = (Math.random() - 0.5) * 2 * baseVolatility;
+        
+        // News impact (if any)
+        let newsImpact = 0;
+        for (const newsItem of this.news) {
+          if (newsItem.relatedTo === symbol && Date.now() - newsItem.timestamp < 60000) {
+            newsImpact = newsItem.priceEffect;
+          }
+        }
+        
+        // Combine all factors
+        let totalChange = longTermTrend + mediumTermTrend + randomFactor + newsImpact;
+        
+        // Occasionally produce bigger moves
+        let bigMoveChance = Math.random();
+        if (bigMoveChance < 0.02) { // 2% chance
+          let direction = Math.random() < 0.5 ? 1 : -1;
+          let magnitude = 0.01 + Math.random() * 0.02; // up to +/- 3%
+          totalChange += direction * magnitude;
+        }
+        
+        // Apply change
+        let newClose = prevClose * (1 + totalChange);
+        if (newClose <= 0) newClose = 0.01; // Prevent negative or zero prices
+        
+        // Create candle
+        let open = prevClose;
+        let close = newClose;
+        let high = Math.max(open, close) * (1 + Math.random() * 0.005);
+        let low = Math.min(open, close) * (1 - Math.random() * 0.005);
+        
+        let candle = {
+          time: Date.now(),
+          open,
+          high,
+          low,
+          close,
+        };
+        
+        candles.push(candle);
+        return candle;
+      },
+      
+      generateNewCandle(symbol) {
+        return this.generateCandleWithTrend(symbol);
+      },
+      
+      /****************************************
+       * Trading Actions
+       ****************************************/
+      switchCrypto() {
+        if (this.cryptoChart) {
+          // Update chart title and data
+          this.cryptoChart.data.datasets[0].label = this.selectedCrypto + ' Price';
+          
+          const data = this.candleData[this.selectedCrypto];
+          this.cryptoChart.data.labels = data.map(p => this.formatTimeShort(new Date(p.time)));
+          this.cryptoChart.data.datasets[0].data = data.map(p => p.close);
+          
+          // Update chart
+          this.cryptoChart.update();
+          
+          // Update 24h price change
+          if (data.length > 24) {
+            const oldPrice = data[data.length - 25].close;
+            const newPrice = data[data.length - 1].close;
+            this.priceChange24h = ((newPrice - oldPrice) / oldPrice) * 100;
+          }
+        }
+        
+        // Set default limit price to current price
+        this.limitPrice = this.currentPrice;
+      },
+      
+      buyCrypto() {
+        if (!this.tradeAmount || this.tradeAmount <= 0) {
+          this.showNotification("Please enter a valid amount to buy", "warning");
+          return;
+        }
+        
+        let cost = this.currentPrice * this.tradeAmount;
+        
+        if (cost > this.balanceUSD) {
+          this.showNotification("Insufficient funds to complete this purchase", "danger");
+          return;
+        }
+        
+        // Deduct cost from balance
+        this.balanceUSD -= cost;
+        
+        // Add to holdings
+        if (!this.holdings[this.selectedCrypto]) {
+          this.holdings[this.selectedCrypto] = 0;
+        }
+        this.holdings[this.selectedCrypto] += this.tradeAmount;
+        
+        // Record transaction
+        this.recordTransaction('buy', this.selectedCrypto, this.tradeAmount, this.currentPrice);
+        
+        // Reset input
+        this.tradeAmount = 0;
+        
+        // Save state
+        this.saveToCookies();
+        
+        // Show confirmation
+        this.showNotification(`Successfully bought ${this.tradeAmount.toFixed(6)} ${this.selectedCrypto}`, "success");
+      },
+      
+      sellCrypto() {
+        if (!this.tradeAmount || this.tradeAmount <= 0) {
+          this.showNotification("Please enter a valid amount to sell", "warning");
+          return;
+        }
+        
+        if (!this.holdings[this.selectedCrypto] || this.holdings[this.selectedCrypto] < this.tradeAmount) {
+          this.showNotification(`Insufficient ${this.selectedCrypto} holdings to complete this sale`, "danger");
+          return;
+        }
+        
+        let proceeds = this.currentPrice * this.tradeAmount;
+        
+        // Add proceeds to balance
+        this.balanceUSD += proceeds;
+        
+        // Deduct from holdings
+        this.holdings[this.selectedCrypto] -= this.tradeAmount;
+        
+        // Record transaction
+        this.recordTransaction('sell', this.selectedCrypto, this.tradeAmount, this.currentPrice);
+        
+        // Reset input
+        this.tradeAmount = 0;
+        
+        // Save state
+        this.saveToCookies();
+        
+        // Show confirmation
+        this.showNotification(`Successfully sold ${this.tradeAmount.toFixed(6)} ${this.selectedCrypto}`, "success");
+      },
+      
+      placeLimitOrder(type) {
+        if (!this.tradeAmount || this.tradeAmount <= 0 || !this.limitPrice || this.limitPrice <= 0) {
+          this.showNotification("Please enter valid amount and price", "warning");
+          return;
+        }
+        
+        // For buy orders, check if user has enough USD
+        if (type === 'buy') {
+          let cost = this.limitPrice * this.tradeAmount;
+          if (cost > this.balanceUSD) {
+            this.showNotification("Insufficient funds to place this order", "danger");
+            return;
+          }
+          
+          // Reserve the funds
+          this.balanceUSD -= cost;
+        }
+        
+        // For sell orders, check if user has enough crypto
+        if (type === 'sell') {
+          if (!this.holdings[this.selectedCrypto] || this.holdings[this.selectedCrypto] < this.tradeAmount) {
+            this.showNotification(`Insufficient ${this.selectedCrypto} holdings to place this order`, "danger");
+            return;
+          }
+          
+          // Reserve the crypto
+          this.holdings[this.selectedCrypto] -= this.tradeAmount;
+        }
+        
+        // Add to pending orders
+        this.pendingOrders.push({
+          type: type,
+          crypto: this.selectedCrypto,
+          amount: this.tradeAmount,
+          price: this.limitPrice,
+          timestamp: Date.now()
+        });
+        
+        // Reset form
+        this.tradeAmount = 0;
+        this.limitPrice = this.currentPrice;
+        
+        // Save state
+        this.saveToCookies();
+        
+        // Show confirmation
+        this.showNotification(`Limit order placed for ${type === 'buy' ? 'buying' : 'selling'} ${this.selectedCrypto}`, "success");
+      },
+      
+      cancelOrder(index) {
+        const order = this.pendingOrders[index];
+        
+        // Return reserved assets
+        if (order.type === 'buy') {
+          // Return USD
+          this.balanceUSD += order.amount * order.price;
+        } else if (order.type === 'sell') {
+          // Return crypto
+          this.holdings[order.crypto] += order.amount;
+        }
+        
+        // Remove order
+        this.pendingOrders.splice(index, 1);
+        
+        // Save state
+        this.saveToCookies();
+        
+        // Show confirmation
+        this.showNotification("Order canceled successfully", "success");
+      },
+      
+      checkPendingOrders() {
+        let filledOrders = [];
+        
+        this.pendingOrders.forEach((order, index) => {
+          const currentPrice = this.currentPriceOf(order.crypto);
+          
+          // Check if buy order should execute (current price <= limit price)
+          if (order.type === 'buy' && currentPrice <= order.price) {
+            // Add to holdings
+            if (!this.holdings[order.crypto]) {
+              this.holdings[order.crypto] = 0;
+            }
+            this.holdings[order.crypto] += order.amount;
+            
+            // Record transaction
+            this.recordTransaction('buy', order.crypto, order.amount, order.price);
+            
+            // Mark for removal
+            filledOrders.push(index);
+            
+            // Show notification
+            this.showNotification(`Buy order executed: ${order.amount.toFixed(6)} ${order.crypto} at ${this.formatUSD(order.price)}`, "success");
+          }
+          
+          // Check if sell order should execute (current price >= limit price)
+          if (order.type === 'sell' && currentPrice >= order.price) {
+            // Add proceeds to balance
+            this.balanceUSD += order.amount * order.price;
+            
+            // Record transaction
+            this.recordTransaction('sell', order.crypto, order.amount, order.price);
+            
+            // Mark for removal
+            filledOrders.push(index);
+            
+            // Show notification
+            this.showNotification(`Sell order executed: ${order.amount.toFixed(6)} ${order.crypto} at ${this.formatUSD(order.price)}`, "success");
+          }
+        });
+        
+        // Remove filled orders (in reverse order to avoid index issues)
+        for (let i = filledOrders.length - 1; i >= 0; i--) {
+          this.pendingOrders.splice(filledOrders[i], 1);
+        }
+        
+        // Save state if orders were filled
+        if (filledOrders.length > 0) {
+          this.saveToCookies();
+        }
+      },
+      
+      sellAllHoldings() {
+        let totalProceeds = 0;
+        let anySold = false;
+        
+        this.cryptos.forEach(({ symbol }) => {
+          let amountOwned = this.holdings[symbol] || 0;
+          if (amountOwned > 0) {
+            let price = this.currentPriceOf(symbol);
+            let proceeds = price * amountOwned;
+            
+            // Record transaction
+            this.recordTransaction('sell', symbol, amountOwned, price);
+            
+            // Update totals
+            totalProceeds += proceeds;
+            this.holdings[symbol] = 0;
+            anySold = true;
+          }
+        });
+        
+        if (anySold) {
+          // Add proceeds to balance
+          this.balanceUSD += totalProceeds;
+          
+          // Save state
+          this.saveToCookies();
+          
+          // Show confirmation
+          this.showNotification(`Successfully sold all crypto holdings for ${this.formatUSD(totalProceeds)}`, "success");
+        } else {
+          this.showNotification("You don't have any crypto holdings to sell", "warning");
+        }
+      },
+      
+      recordTransaction(type, crypto, amount, price) {
+        this.transactions.unshift({
+          type: type,
+          crypto: crypto,
+          amount: amount,
+          price: price,
+          timestamp: Date.now()
+        });
+        
+        // Keep last 100 transactions
+        if (this.transactions.length > 100) {
+          this.transactions.pop();
+        }
+      },
+      
+      depositFunds() {
+        if (!this.depositAmount || this.depositAmount <= 0) {
+          this.showNotification("Please enter a valid deposit amount", "warning");
+          return;
+        }
+        
+        this.balanceUSD += this.depositAmount;
+        this.showingDepositModal = false;
+        this.depositAmount = 0;
+        this.saveToCookies();
+        
+        this.showNotification(`Successfully deposited ${this.formatUSD(this.depositAmount)}`, "success");
+      },
+      
+      withdrawFunds() {
+        if (!this.withdrawAmount || this.withdrawAmount <= 0) {
+          this.showNotification("Please enter a valid withdrawal amount", "warning");
+          return;
+        }
+        
+        if (this.withdrawAmount > this.balanceUSD) {
+          this.showNotification("Insufficient funds for this withdrawal", "danger");
+          return;
+        }
+        
+        this.balanceUSD -= this.withdrawAmount;
+        this.showingWithdrawModal = false;
+        this.withdrawAmount = 0;
+        this.saveToCookies();
+        
+        this.showNotification(`Successfully withdrew ${this.formatUSD(this.withdrawAmount)}`, "success");
+      },
+      
+      showDepositModal() {
+        this.depositAmount = 0;
+        this.showingDepositModal = true;
+      },
+      
+      showWithdrawModal() {
+        this.withdrawAmount = 0;
+        this.showingWithdrawModal = true;
+      },
+      
+      /****************************************
+       * News Generator
+       ****************************************/
+      generateNewsFeed() {
+        // Initial news feed
+        const baseTitles = [
+          { text: "{crypto} Reaches All-Time High as Institutional Adoption Grows", impact: "positive" },
+          { text: "Market Analyst Predicts {crypto} Will Double in Value by Year End", impact: "positive" },
+          { text: "{crypto} Development Team Announces Major Protocol Upgrade", impact: "positive" },
+          { text: "Major Retailer Begins Accepting {crypto} for Payments", impact: "positive" },
+          { text: "Regulatory Concerns Cast Shadow Over {crypto}'s Future", impact: "negative" },
+          { text: "{crypto} Faces Selloff After Security Vulnerability Discovered", impact: "negative" },
+          { text: "Leading Exchange Delists {crypto} Citing Compliance Issues", impact: "negative" },
+          { text: "{crypto} Mining Difficulty Increases, Profitability Concerns Rise", impact: "negative" },
+          { text: "{crypto} Remains Stable Despite Market Volatility", impact: "neutral" },
+          { text: "New Research Shows {crypto} Transaction Volume Growing Steadily", impact: "neutral" }
+        ];
+        
+        // Generate 5 initial news items
+        for (let i = 0; i < 5; i++) {
+          this.generateNewsItem(Date.now() - (5 - i) * 3600000); // Spread over last 5 hours
+        }
+      },
+      
+      generateNewsItem(timestamp = Date.now()) {
+        const baseTitles = [
+          { text: "{crypto} Reaches New High as Institutional Adoption Grows", impact: "positive" },
+          { text: "Market Analyst Predicts {crypto} Will Double in Value", impact: "positive" },
+          { text: "{crypto} Development Team Announces Major Protocol Upgrade", impact: "positive" },
+          { text: "Major Retailer Begins Accepting {crypto} for Payments", impact: "positive" },
+          { text: "Regulatory Concerns Cast Shadow Over {crypto}'s Future", impact: "negative" },
+          { text: "{crypto} Faces Selloff After Security Vulnerability Discovered", impact: "negative" },
+          { text: "Leading Exchange Delists {crypto} Citing Compliance Issues", impact: "negative" },
+          { text: "{crypto} Mining Difficulty Increases, Profitability Concerns Rise", impact: "negative" },
+          { text: "{crypto} Remains Stable Despite Market Volatility", impact: "neutral" },
+          { text: "New Research Shows {crypto} Transaction Volume Growing Steadily", impact: "neutral" }
+        ];
+        
+        // Pick a random crypto and title
+        const crypto = this.cryptos[Math.floor(Math.random() * this.cryptos.length)];
+        const titleTemplate = baseTitles[Math.floor(Math.random() * baseTitles.length)];
+        
+        // Replace {crypto} with actual crypto name
+        const cryptoName = crypto.name.split(' ')[0]; // Just get the name part, not the symbol
+        const title = titleTemplate.text.replace('{crypto}', cryptoName);
+        
+        // Generate a brief summary
+        let summary;
+        if (titleTemplate.impact === "positive") {
+          summary = `Positive developments for ${cryptoName} as ${['investor confidence rises', 'adoption increases', 'technical improvements are implemented', 'market sentiment improves'][Math.floor(Math.random() * 4)]}.`;
+        } else if (titleTemplate.impact === "negative") {
+          summary = `Challenges ahead for ${cryptoName} as ${['regulatory scrutiny increases', 'technical issues emerge', 'market competition intensifies', 'investor sentiment weakens'][Math.floor(Math.random() * 4)]}.`;
+        } else {
+          summary = `Market observers note ${cryptoName}'s ${['stable performance', 'consistent growth', 'resilience to market volatility', 'increasing use cases'][Math.floor(Math.random() * 4)]}.`;
+        }
+        
+        // Calculate price effect
+        let priceEffect = 0;
+        if (titleTemplate.impact === "positive") {
+          priceEffect = 0.005 + Math.random() * 0.02; // 0.5% to 2.5% positive
+        } else if (titleTemplate.impact === "negative") {
+          priceEffect = -(0.005 + Math.random() * 0.02); // 0.5% to 2.5% negative
+        }
+        
+        // Create news item
+        const newsItem = {
+          title: title,
+          summary: summary,
+          impact: titleTemplate.impact === "positive" ? "Bullish" : (titleTemplate.impact === "negative" ? "Bearish" : "Neutral"),
+          timestamp: timestamp,
+          relatedTo: crypto.symbol,
+          priceEffect: priceEffect
+        };
+        
+        // Add to news feed
+        this.news.unshift(newsItem);
+        
+        // Keep only latest 20 news items
+        if (this.news.length > 20) {
+          this.news.pop();
+        }
+        
+        return newsItem;
+      },
+      
+      /****************************************
+       * Utility Functions
+       ****************************************/
+      currentPriceOf(symbol) {
+        const data = this.candleData[symbol];
+        if (!data || data.length === 0) return 0;
+        return data[data.length - 1].close;
+      },
+      
+      formatUSD(value) {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD'
+        }).format(value);
+      },
+      
+      formatChange(value) {
+        let sign = value >= 0 ? '+' : '';
+        return `${sign}${value.toFixed(2)}%`;
+      },
+      
+      formatTime(date) {
+        let hh = String(date.getHours()).padStart(2, '0');
+        let mm = String(date.getMinutes()).padStart(2, '0');
+        let ss = String(date.getSeconds()).padStart(2, '0');
+        return `${hh}:${mm}:${ss}`;
+      },
+      
+      formatTimeShort(date) {
+        let hh = String(date.getHours()).padStart(2, '0');
+        let mm = String(date.getMinutes()).padStart(2, '0');
+        return `${hh}:${mm}`;
+      },
+      
+      formatDate(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleDateString() + ' ' + this.formatTimeShort(date);
+      },
+      
+      showNotification(message, type = 'success') {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+          ${message}
+          <span class="notification-close">&times;</span>
+        `;
+        
+        // Add to notifications container
+        document.getElementById('notifications').appendChild(notification);
+        
+        // Add click handler to close button
+        notification.querySelector('.notification-close').addEventListener('click', () => {
+          notification.remove();
+        });
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.remove();
+          }
+        }, 5000);
+      },
+      
+      /****************************************
+       * Cookie Persistence
+       ****************************************/
+      hasSavedData() {
+        let match = document.cookie.match(new RegExp('(^| )tradingData=([^;]+)'));
+        return !!match;
+      },
+      
+      saveToCookies() {
+        let data = {
+          balanceUSD: this.balanceUSD,
+          holdings: this.holdings,
+          transactions: this.transactions,
+          pendingOrders: this.pendingOrders,
+          portfolioHistory: this.portfolioHistory
+        };
+        
+        let json = JSON.stringify(data);
+        let expiry = new Date();
+        expiry.setDate(expiry.getDate() + 30);
+        document.cookie = `tradingData=${encodeURIComponent(json)}; expires=${expiry.toUTCString()}; path=/;`;
+      },
+      
+      loadFromCookies() {
+        let match = document.cookie.match(new RegExp('(^| )tradingData=([^;]+)'));
+        if (match) {
+          let json = decodeURIComponent(match[2]);
+          try {
+            let data = JSON.parse(json);
+            if (data.balanceUSD !== undefined) {
+              this.balanceUSD = data.balanceUSD;
+            }
+            if (data.holdings !== undefined) {
+              this.holdings = data.holdings;
+            }
+            if (data.transactions !== undefined) {
+              this.transactions = data.transactions;
+            }
+            if (data.pendingOrders !== undefined) {
+              this.pendingOrders = data.pendingOrders;
+            }
+            if (data.portfolioHistory !== undefined) {
+              this.portfolioHistory = data.portfolioHistory;
+            }
+          } catch (err) {
+            console.error('Error parsing cookie data:', err);
+          }
+        }
+      },
+    };
+  }
+</script>
+
+</body>
+</html>
